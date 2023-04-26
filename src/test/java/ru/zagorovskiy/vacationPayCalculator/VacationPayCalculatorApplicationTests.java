@@ -3,8 +3,10 @@ package ru.zagorovskiy.vacationPayCalculator;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import ru.zagorovskiy.vacationPayCalculator.controller.VacationPayCalculatorController;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -24,7 +26,7 @@ class VacationPayCalculatorApplicationTests {
         // given
         var averageSalary = BigDecimal.valueOf(360);
         int vacationDays = 10;
-        var result = BigDecimal.valueOf(1000, 2);
+        var result = BigDecimal.valueOf(1020, 2);
 
         // when
         var resultController = controller.calculatePay(averageSalary, vacationDays, null, null);
@@ -37,11 +39,25 @@ class VacationPayCalculatorApplicationTests {
     void vacationPayWithStartAndEndDates() {
         // given
         var averageSalary = BigDecimal.valueOf(360);
-        var result = BigDecimal.valueOf(1600, 2);
+        var result = BigDecimal.valueOf(1734, 2);
 
         // when
         var resultController = controller.calculatePay(averageSalary, null,
-                "2023-01-01", "2023-01-31");
+                LocalDate.of(2023, 1, 1), LocalDate.of(2023, 1, 31));
+
+        // then
+        assertThat(resultController).isEqualTo(result);
+    }
+
+    @Test
+    void vacationPayWithStartDate() {
+        // given
+        var averageSalary = BigDecimal.valueOf(360);
+        var result = BigDecimal.valueOf(1734, 2);
+
+        // when
+        var resultController = controller.calculatePay(averageSalary, 31,
+                LocalDate.of(2023, 1, 1), null);
 
         // then
         assertThat(resultController).isEqualTo(result);
@@ -55,7 +71,7 @@ class VacationPayCalculatorApplicationTests {
 
         // when
         var resultController = controller.calculatePay(averageSalary, null,
-                "2023-01-01", "2023-01-06");
+                LocalDate.of(2023, 1, 1), LocalDate.of(2023, 1, 6));
 
         // then
         assertThat(resultController).isEqualTo(result);
