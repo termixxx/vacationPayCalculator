@@ -22,8 +22,7 @@ public class VacationPayCalculatorController {
                                    @RequestParam(name = "vacationDays") Integer vacationDays,
                                    @RequestParam(name = "startDateStr", required = false) String startDateStr, // yyyy-mm-dd
                                    @RequestParam(name = "endDateStr", required = false) String endDateStr) throws DateTimeException {
-
-        BigDecimal vacationPay = null;
+        BigDecimal vacationPay;
         final var salaryPerDay = averageSalary.divide(BigDecimal.valueOf(360), 2, RoundingMode.HALF_UP);
 
         if (startDateStr != null && endDateStr != null) {
@@ -33,23 +32,10 @@ public class VacationPayCalculatorController {
                 logger.error("Start date should go before the end date");
                 throw new DateTimeException("StartDate > EndDate");
             }
-            var holidayDays = getHolidayDaysList(curDate.getYear());
-            int vacationDaysWithHolidays = 0;
-            while (!curDate.equals(endDate)) {
-                // подсчёт кол-ва отпускных дней с учётом праздников и выходных
 
-                var dayOfWeek = curDate.getDayOfWeek().getValue();
-                if (dayOfWeek == 6 || dayOfWeek == 7) { // пропуск субботы и воскресенья
-                    curDate = curDate.plusDays(1);
-                    continue;
-                }
-                if (holidayDays.contains(curDate)) { // пропускаем праздники
-                    curDate = curDate.plusDays(1);
-                    continue;
-                }
-                vacationDaysWithHolidays++; // рабочий день ++
-                curDate = curDate.plusDays(1);
-            }
+            var holidayDays = getHolidayDaysList(curDate.getYear());
+            int vacationDaysWithHolidays = getVacationDaysWithHolidays(curDate, endDate, holidayDays);
+
             vacationPay = salaryPerDay.multiply(BigDecimal.valueOf(vacationDaysWithHolidays));
         } else {
             vacationPay = salaryPerDay.multiply(BigDecimal.valueOf(vacationDays));
@@ -57,7 +43,29 @@ public class VacationPayCalculatorController {
         return vacationPay;
     }
 
-    private List<LocalDate> getHolidayDaysList(int year) {
+    private static int getVacationDaysWithHolidays(LocalDate curDate, LocalDate endDate, List<LocalDate> holidayDays) {
+        int vacationDaysWithHolidays = 0;
+
+        while (!curDate.equals(endDate)) {
+            // подсчёт кол-ва отпускных дней с учётом праздников и выходных
+
+            var dayOfWeek = curDate.getDayOfWeek().getValue();
+            if (dayOfWeek == 6 || dayOfWeek == 7) { // пропуск субботы и воскресенья
+                curDate = curDate.plusDays(1);
+                continue;
+            }
+            if (holidayDays.contains(curDate)) { // пропускаем праздники
+                curDate = curDate.plusDays(1);
+                continue;
+            }
+            vacationDaysWithHolidays++; // рабочий день ++
+            curDate = curDate.plusDays(1);
+        }
+        return vacationDaysWithHolidays;
+    }
+
+    private static List<LocalDate> getHolidayDaysList(int year) {
+        int nextYear = year + 1;
         return List.of(
                 LocalDate.of(year, Month.JANUARY, 1),
                 LocalDate.of(year, Month.JANUARY, 2),
@@ -71,7 +79,21 @@ public class VacationPayCalculatorController {
                 LocalDate.of(year, Month.MAY, 1),
                 LocalDate.of(year, Month.MAY, 9),
                 LocalDate.of(year, Month.JUNE, 12),
-                LocalDate.of(year, Month.NOVEMBER, 4)
+                LocalDate.of(year, Month.NOVEMBER, 4),
+
+                LocalDate.of(nextYear, Month.JANUARY, 1), // если отпуск начался в одном году, а закончился в другом
+                LocalDate.of(nextYear, Month.JANUARY, 2),
+                LocalDate.of(nextYear, Month.JANUARY, 3),
+                LocalDate.of(nextYear, Month.JANUARY, 4),
+                LocalDate.of(nextYear, Month.JANUARY, 5),
+                LocalDate.of(nextYear, Month.JANUARY, 6),
+                LocalDate.of(nextYear, Month.JANUARY, 8),
+                LocalDate.of(nextYear, Month.FEBRUARY, 23),
+                LocalDate.of(nextYear, Month.MARCH, 8),
+                LocalDate.of(nextYear, Month.MAY, 1),
+                LocalDate.of(nextYear, Month.MAY, 9),
+                LocalDate.of(nextYear, Month.JUNE, 12),
+                LocalDate.of(nextYear, Month.NOVEMBER, 4)
         );
     }
 }
