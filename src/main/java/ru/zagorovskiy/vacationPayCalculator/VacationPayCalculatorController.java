@@ -12,18 +12,24 @@ import java.time.DateTimeException;
 import java.time.LocalDate;
 import java.time.Month;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 public class VacationPayCalculatorController {
     private final Logger logger = LogManager.getLogger(VacationPayCalculatorController.class);
 
     @GetMapping("/calculate")
-    public BigDecimal calculatePay(@RequestParam(name = "averageSalary") BigDecimal averageSalary,
+    public BigDecimal calculatePay(@RequestParam(name = "averageSalary") BigDecimal averageSalary, // среднюю зарплату за 12 месяцев
                                    @RequestParam(name = "vacationDays") Integer vacationDays,
                                    @RequestParam(name = "startDateStr", required = false) String startDateStr, // yyyy-mm-dd
                                    @RequestParam(name = "endDateStr", required = false) String endDateStr) throws DateTimeException {
         BigDecimal vacationPay;
-        final var salaryPerDay = averageSalary.divide(BigDecimal.valueOf(360), 2, RoundingMode.HALF_UP);
+
+        final var salaryPerDay = averageSalary
+                .divide(BigDecimal.valueOf(12), 2, RoundingMode.HALF_UP)
+                .divide(BigDecimal.valueOf(29.3), 2, RoundingMode.HALF_UP);
+        // среднюю зп за 12 месяцев делим на 12, и делим на среднее кол-во дней в месяце 29,3
+        // 29.3 взято из статьи https://www.sberbank.ru/ru/s_m_business/pro_business/raschet-srednemesjachnoj-zarabotnoj-platy/
 
         if (startDateStr != null && endDateStr != null) {
             var curDate = LocalDate.parse(startDateStr);
@@ -33,7 +39,7 @@ public class VacationPayCalculatorController {
                 throw new DateTimeException("StartDate > EndDate");
             }
 
-            var holidayDays = getHolidayDaysList(curDate.getYear());
+            var holidayDays = getHolidayDaysList();
             int vacationDaysWithHolidays = getVacationDaysWithHolidays(curDate, endDate, holidayDays);
 
             vacationPay = salaryPerDay.multiply(BigDecimal.valueOf(vacationDaysWithHolidays));
@@ -43,57 +49,54 @@ public class VacationPayCalculatorController {
         return vacationPay;
     }
 
-    private static int getVacationDaysWithHolidays(LocalDate curDate, LocalDate endDate, List<LocalDate> holidayDays) {
+    /**
+     * Считает кол-во дней отпуска
+     *
+     * @param startDate   дата ухода в отпуск
+     * @param endDate     дата возращения из отпуска
+     * @param holidayDays мапа праздничных дней
+     * @return количество дней
+     */
+    private static int getVacationDaysWithHolidays(LocalDate startDate, LocalDate endDate, Map<Month, List<Integer>> holidayDays) {
         int vacationDaysWithHolidays = 0;
 
-        while (!curDate.equals(endDate)) {
+        while (!startDate.equals(endDate)) {
             // подсчёт кол-ва отпускных дней с учётом праздников и выходных
 
-            var dayOfWeek = curDate.getDayOfWeek().getValue();
+            var dayOfWeek = startDate.getDayOfWeek().getValue();
             if (dayOfWeek == 6 || dayOfWeek == 7) { // пропуск субботы и воскресенья
-                curDate = curDate.plusDays(1);
+                startDate = startDate.plusDays(1);
                 continue;
             }
-            if (holidayDays.contains(curDate)) { // пропускаем праздники
-                curDate = curDate.plusDays(1);
+            if (holidayDays.get(startDate.getMonth()) // лист праздничных дней по текущему месяцу
+                    .contains(startDate.getDayOfMonth())) { // пропускаем праздники
+                startDate = startDate.plusDays(1);
                 continue;
             }
             vacationDaysWithHolidays++; // рабочий день ++
-            curDate = curDate.plusDays(1);
+            startDate = startDate.plusDays(1);
         }
         return vacationDaysWithHolidays;
     }
 
-    private static List<LocalDate> getHolidayDaysList(int year) {
-        int nextYear = year + 1;
-        return List.of(
-                LocalDate.of(year, Month.JANUARY, 1),
-                LocalDate.of(year, Month.JANUARY, 2),
-                LocalDate.of(year, Month.JANUARY, 3),
-                LocalDate.of(year, Month.JANUARY, 4),
-                LocalDate.of(year, Month.JANUARY, 5),
-                LocalDate.of(year, Month.JANUARY, 6),
-                LocalDate.of(year, Month.JANUARY, 8),
-                LocalDate.of(year, Month.FEBRUARY, 23),
-                LocalDate.of(year, Month.MARCH, 8),
-                LocalDate.of(year, Month.MAY, 1),
-                LocalDate.of(year, Month.MAY, 9),
-                LocalDate.of(year, Month.JUNE, 12),
-                LocalDate.of(year, Month.NOVEMBER, 4),
-
-                LocalDate.of(nextYear, Month.JANUARY, 1), // если отпуск начался в одном году, а закончился в другом
-                LocalDate.of(nextYear, Month.JANUARY, 2),
-                LocalDate.of(nextYear, Month.JANUARY, 3),
-                LocalDate.of(nextYear, Month.JANUARY, 4),
-                LocalDate.of(nextYear, Month.JANUARY, 5),
-                LocalDate.of(nextYear, Month.JANUARY, 6),
-                LocalDate.of(nextYear, Month.JANUARY, 8),
-                LocalDate.of(nextYear, Month.FEBRUARY, 23),
-                LocalDate.of(nextYear, Month.MARCH, 8),
-                LocalDate.of(nextYear, Month.MAY, 1),
-                LocalDate.of(nextYear, Month.MAY, 9),
-                LocalDate.of(nextYear, Month.JUNE, 12),
-                LocalDate.of(nextYear, Month.NOVEMBER, 4)
-        );
+    /**
+     * 1, 2, 3, 4, 5, 6 и 8 января — Новогодние каникулы;<br/>
+     * 7 января — Рождество Христово;<br/>
+     * 23 февраля — День защитника Отечества;<br/>
+     * 8 марта — Международный женский день;<br/>
+     * 1 мая — Праздник Весны и Труда;<br/>
+     * 9 мая — День Победы;<br/>
+     * 12 июня — День России;<br/>
+     * 4 ноября — День народного единства.<br/>
+     *
+     * @return мапу с праздничными днями для месяцев
+     */
+    private static Map<Month, List<Integer>> getHolidayDaysList() {
+        return Map.of(Month.JANUARY, List.of(1, 3, 4, 5, 6, 8),
+                Month.FEBRUARY, List.of(23),
+                Month.MARCH, List.of(8),
+                Month.MAY, List.of(1, 9),
+                Month.JUNE, List.of(12),
+                Month.NOVEMBER, List.of(4));
     }
 }
