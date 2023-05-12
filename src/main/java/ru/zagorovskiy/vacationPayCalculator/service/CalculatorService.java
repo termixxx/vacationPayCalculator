@@ -6,8 +6,6 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 
-import static ru.zagorovskiy.vacationPayCalculator.data.HolidaysData.getHolidayDaysList;
-
 @Service
 public class CalculatorService {
     private final HolidaysService holidaysService;
@@ -41,9 +39,8 @@ public class CalculatorService {
      */
     public BigDecimal calculateVacationPayWithDates(BigDecimal averageSalary, LocalDate startDate, LocalDate endDate) {
         var salaryPerDay = calculateSalaryPerDay(averageSalary);
-        var holidayDays = getHolidayDaysList();
 
-        int vacationDaysWithHolidays = holidaysService.getVacationDaysWithHolidaysAndDates(startDate, endDate, holidayDays);
+        int vacationDaysWithHolidays = holidaysService.getVacationDaysWithHolidaysAndDates(startDate, endDate);
 
         return salaryPerDay.multiply(BigDecimal.valueOf(vacationDaysWithHolidays));
     }
@@ -58,9 +55,8 @@ public class CalculatorService {
      */
     public BigDecimal calculateVacationPayWithStartDay(BigDecimal averageSalary, Integer vacationDays, LocalDate startDate) {
         var salaryPerDay = calculateSalaryPerDay(averageSalary);
-        var holidayDays = getHolidayDaysList();
 
-        int vacationDaysWithHolidays = holidaysService.getVacationDaysWithHolidaysAndStartDay(startDate, vacationDays, holidayDays);
+        int vacationDaysWithHolidays = holidaysService.getVacationDaysWithHolidaysAndStartDay(startDate, vacationDays);
 
         return salaryPerDay.multiply(BigDecimal.valueOf(vacationDaysWithHolidays));
     }

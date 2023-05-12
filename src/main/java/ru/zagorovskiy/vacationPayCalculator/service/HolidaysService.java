@@ -3,9 +3,8 @@ package ru.zagorovskiy.vacationPayCalculator.service;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
-import java.time.Month;
-import java.util.List;
-import java.util.Map;
+
+import static ru.zagorovskiy.vacationPayCalculator.data.HolidaysData.getHolidayDaysList;
 
 @Service
 public class HolidaysService {
@@ -13,13 +12,14 @@ public class HolidaysService {
     /**
      * Считает кол-во рабочих дней в промежутке между датами начала и конца
      *
-     * @param startDate   дата ухода в отпуск
-     * @param endDate     дата возращения из отпуска
-     * @param holidayDays мапа праздничных дней
+     * @param startDate дата ухода в отпуск
+     * @param endDate   дата возращения из отпуска
      * @return количество дней
      */
-    public int getVacationDaysWithHolidaysAndDates(LocalDate startDate, LocalDate endDate, Map<Month, List<Integer>> holidayDays) {
+    public int getVacationDaysWithHolidaysAndDates(LocalDate startDate, LocalDate endDate) {
         int vacationDaysWithHolidays = 0;
+        var holidayDays = getHolidayDaysList();
+
         endDate = endDate.plusDays(1);// включительно
         while (!startDate.equals(endDate)) {
             // подсчёт кол-ва отпускных дней с учётом праздников и выходных
@@ -45,11 +45,11 @@ public class HolidaysService {
      *
      * @param startDate    дата ухода в отпуск
      * @param vacationDays кол-во выходных дней
-     * @param holidayDays  мапа праздничных дней
      * @return количество дней
      */
-    public int getVacationDaysWithHolidaysAndStartDay(LocalDate startDate, Integer vacationDays, Map<Month, List<Integer>> holidayDays) {
+    public int getVacationDaysWithHolidaysAndStartDay(LocalDate startDate, Integer vacationDays) {
         int vacationDaysWithHolidays = 0;
+        var holidayDays = getHolidayDaysList();
 
         while (vacationDays != 0) {
             // подсчёт кол-ва отпускных дней с учётом праздников и выходных
